@@ -115,6 +115,15 @@
     transition: transform 0.15s, font-size 0.3s;
   }
   .btn-yes:hover { transform: translateY(-3px) scale(1.04); }
+  /* playful attention wiggle — rotate/translate only, never resizes (so nothing gets covered) */
+  .btn-yes.wiggle { animation: yesWiggle 0.5s ease; }
+  @keyframes yesWiggle {
+    0%, 100% { transform: rotate(0) translateY(0); }
+    20%      { transform: rotate(-7deg) translateY(-5px); }
+    40%      { transform: rotate(6deg) translateY(0); }
+    60%      { transform: rotate(-4deg) translateY(-3px); }
+    80%      { transform: rotate(3deg) translateY(0); }
+  }
   .btn-no {
     background: #f0e6ec;
     color: #a98ba0;
@@ -123,7 +132,8 @@
   .btn-no.fleeing {
     position: fixed;
     z-index: 50;
-    transition: left 0.12s ease, top 0.12s ease;
+    transform-origin: center center;
+    transition: left 0.12s ease, top 0.12s ease, transform 0.2s ease;
   }
 
   /* calendar */
@@ -497,21 +507,13 @@
 
   btnYes.addEventListener("click", function () { goTo(1); });
 
-  if (isTouch) {
-    // MOBILE: teleport the No button to a random spot, and grow the Yes button
-    btnNo.addEventListener("click", function (e) {
-      e.preventDefault();
-      teaseAndMoveMobile();
-    });
-  } else {
-    // DESKTOP: No button dodges the mouse
-    btnNo.addEventListener("mouseenter", dodgeDesktop);
-    btnNo.addEventListener("mousemove", dodgeDesktop);
-    btnNo.addEventListener("click", function (e) {
-      e.preventDefault();
-      dodgeDesktop();
-    });
-  }
+  // Both desktop and mobile: the No button hops to a random spot on click.
+  btnNo.addEventListener("click", function (e) {
+    e.preventDefault();
+    teaseAndMove();
+  });
+
+  var noScale = 1;
 
   function nextTease() {
     noHint.textContent = teasing[dodgeCount % teasing.length];
@@ -520,10 +522,21 @@
     void noHint.offsetWidth;
     noHint.classList.add("show");
     dodgeCount++;
-    // grow the Yes button IN PLACE — transform:scale doesn't affect layout,
-    // and transform-origin:center keeps its center point fixed.
-    var scale = Math.min(1 + dodgeCount * 0.05, 1.4);
-    btnYes.style.transform = "scale(" + scale + ")";
+    wiggleYes();  // draw attention to Yes without changing its size
+    shrinkNo();   // the No button keeps shrinking away
+  }
+
+  // quick attention wiggle on Yes (rotate/translate only — no resize, covers nothing)
+  function wiggleYes() {
+    btnYes.classList.remove("wiggle");
+    void btnYes.offsetWidth; // restart the animation each time
+    btnYes.classList.add("wiggle");
+  }
+
+  // shrink the No button a little on every attempt, down to a floor
+  function shrinkNo() {
+    noScale = Math.max(noScale - 0.08, 0.5);
+    btnNo.style.transform = "scale(" + noScale + ")";
   }
 
   // pin the Yes button where it currently sits so that when the No button
@@ -567,16 +580,10 @@
     btnNo.style.top = y + "px";
   }
 
-  function teaseAndMoveMobile() {
-    nextTease();
-    startFleeingIfNeeded();
-    moveNoTo(12);
-  }
-
-  function dodgeDesktop() {
-    nextTease();
-    startFleeingIfNeeded();
-    moveNoTo(16);
+  function teaseAndMove() {
+    startFleeingIfNeeded();          // pin Yes + capture No's natural size first
+    nextTease();                     // then wiggle Yes and shrink No
+    moveNoTo(isTouch ? 12 : 16);     // hop to a random spot
   }
 
   // ============ STEP 2: calendar ============
