@@ -70,13 +70,15 @@
     margin-bottom: 12px;
   }
   .act-top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .emoji-in {
-    width: 54px; text-align: center; flex: 0 0 auto;
+  /* selector must out-specify `input[type="text"]{width:100%}` (both 0,0,1,1;
+     defined later so it wins) and pin the flex-basis so the row never overflows */
+  input.emoji-in {
+    flex: 0 0 54px; width: 54px; text-align: center;
     border: 2px solid #f0e2ea; border-radius: 12px; padding: 12px 6px;
     font-size: 20px; font-family: inherit; background: #fff;
   }
   .emoji-in:focus { outline: none; border-color: var(--pink-soft); }
-  .label-in { flex: 1 1 auto; }
+  .label-in { flex: 1 1 auto; min-width: 0; }  /* allow shrink so the ✕ stays inside the card */
   .del {
     flex: 0 0 auto; width: 40px; height: 44px;
     border: none; border-radius: 12px; background: #ffe1ea; color: var(--pink);
