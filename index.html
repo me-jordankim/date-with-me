@@ -328,7 +328,7 @@
 </div>
 
 <script>
-(function () {
+(async function () {
   "use strict";
 
   // ---- device detection ----
@@ -341,12 +341,48 @@
     details: {}          // { activityKey: [selected options] }
   };
 
-  // ---- URL-safe UTF-8 base64 (all config/replies live in the URL, no DB) ----
-  function encodeData(obj) {
-    var b = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-    return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // ---- compact, URL-safe encoding (deflate when the browser supports it).
+  //      No DB: all config/replies live in the URL. Format: 1-char scheme tag
+  //      ('D' deflate-raw, 'P' plain) + URL-safe base64. Legacy untagged base64
+  //      is still accepted on decode. ----
+  function bytesToB64url(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-  function decodeData(str) {
+  function b64urlToBytes(str) {
+    var b = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    var bin = atob(b), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  var CAN_COMPRESS = (typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined');
+  async function deflateBytes(bytes) {
+    var cs = new CompressionStream('deflate-raw');
+    var w = cs.writable.getWriter(); w.write(bytes); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }
+  async function inflateBytes(bytes) {
+    var ds = new DecompressionStream('deflate-raw');
+    var w = ds.writable.getWriter(); w.write(bytes); w.close();
+    return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  }
+  async function encodeData(obj) {
+    var utf8 = new TextEncoder().encode(JSON.stringify(obj));
+    if (CAN_COMPRESS) {
+      try { return 'D' + bytesToB64url(await deflateBytes(utf8)); } catch (e) {}
+    }
+    return 'P' + bytesToB64url(utf8);
+  }
+  async function decodeData(str) {
+    var tag = str.charAt(0);
+    if (tag === 'D' || tag === 'P') {
+      var bytes = b64urlToBytes(str.slice(1));
+      if (tag === 'D') bytes = await inflateBytes(bytes);
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+    // legacy: untagged plain base64url of the UTF-8 JSON
     var b = str.replace(/-/g, '+').replace(/_/g, '/');
     while (b.length % 4) b += '=';
     return JSON.parse(decodeURIComponent(escape(atob(b))));
@@ -371,8 +407,8 @@
   var MODE = "invite";
   var CONFIG = null, REPLY = null;
   try {
-    if (hash.indexOf("#r=") === 0) { MODE = "reply"; REPLY = decodeData(hash.slice(3)); }
-    else if (hash.indexOf("#c=") === 0) { CONFIG = decodeData(hash.slice(3)); }
+    if (hash.indexOf("#r=") === 0) { MODE = "reply"; REPLY = await decodeData(hash.slice(3)); }
+    else if (hash.indexOf("#c=") === 0) { CONFIG = await decodeData(hash.slice(3)); }
   } catch (e) { CONFIG = null; REPLY = null; }
 
   // ---- build ACTIVITIES from config (short keys e/l/q/o) or defaults ----
@@ -880,8 +916,8 @@
     return payload;
   }
 
-  $("btnReply").addEventListener("click", function () {
-    var link = baseUrl() + "#r=" + encodeData(buildReplyPayload());
+  $("btnReply").addEventListener("click", async function () {
+    var link = baseUrl() + "#r=" + await encodeData(buildReplyPayload());
     function done() { $("shareHint").textContent = "답장 링크 복사 완료! 신청한 사람에게 보내줘 💌"; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(link).then(done, function () { fallbackCopy(link); done(); });

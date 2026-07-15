@@ -183,10 +183,25 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
 
-  // URL-safe UTF-8 base64 (must match index.html)
-  function encodeData(obj) {
-    var b = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-    return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // Compact, URL-safe encoding — must match index.html (deflate when available,
+  // 'D'/'P' scheme tag + URL-safe base64).
+  function bytesToB64url(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  var CAN_COMPRESS = (typeof CompressionStream !== 'undefined');
+  async function deflateBytes(bytes) {
+    var cs = new CompressionStream('deflate-raw');
+    var w = cs.writable.getWriter(); w.write(bytes); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }
+  async function encodeData(obj) {
+    var utf8 = new TextEncoder().encode(JSON.stringify(obj));
+    if (CAN_COMPRESS) {
+      try { return 'D' + bytesToB64url(await deflateBytes(utf8)); } catch (e) {}
+    }
+    return 'P' + bytesToB64url(utf8);
   }
 
   var DEFAULTS = [
@@ -244,22 +259,29 @@
       var o = card.querySelector(".o-in").value.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
       acts.push({ e: e, l: l, q: qq, o: o });
     });
-    cfg.a = acts;
+    // if the activities are the untouched defaults, omit them entirely —
+    // index.html falls back to the same defaults, keeping the link short.
+    if (JSON.stringify(acts) !== JSON.stringify(DEFAULT_CANON)) cfg.a = acts;
     return cfg;
   }
+
+  // canonical form of the defaults (options as arrays) for the omit-when-default check
+  var DEFAULT_CANON = DEFAULTS.map(function (a) {
+    return { e: a.e, l: a.l, q: a.q, o: a.o.split(",").map(function (x) { return x.trim(); }).filter(Boolean) };
+  });
 
   // where index.html lives (same folder as this page)
   function inviteBase() {
     return location.href.split(/[?#]/)[0].replace(/[^\/]*$/, "index.html");
   }
 
-  $("makeLink").addEventListener("click", function () {
+  $("makeLink").addEventListener("click", async function () {
+    var named = 0;
+    listEl.querySelectorAll(".label-in").forEach(function (i) { if (i.value.trim()) named++; });
+    if (named === 0) { alert("활동을 하나 이상 추가해주세요 🙏"); return; }
+
     var cfg = buildConfig();
-    if (!cfg.a.length) {
-      alert("활동을 하나 이상 추가해주세요 🙏");
-      return;
-    }
-    var link = inviteBase() + "#c=" + encodeData(cfg);
+    var link = inviteBase() + "#c=" + await encodeData(cfg);
     $("linkBox").value = link;
     $("result").classList.add("show");
     $("okMsg").textContent = "";
