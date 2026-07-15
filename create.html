@@ -272,7 +272,11 @@
 
   // where index.html lives (same folder as this page)
   function inviteBase() {
-    return location.href.split(/[?#]/)[0].replace(/[^\/]*$/, "index.html");
+    var base = location.href.split(/[?#]/)[0];
+    // On a web host the invitation lives at the site root (clean URL);
+    // opening from a local file needs the explicit index.html filename.
+    if (location.protocol === "file:") return base.replace(/[^\/]*$/, "index.html");
+    return base.replace(/[^\/]*$/, "");
   }
 
   $("makeLink").addEventListener("click", async function () {
