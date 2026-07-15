@@ -119,7 +119,9 @@
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* step 1 buttons */
-  .yesno { display: flex; gap: 16px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+  /* min-height keeps the row's space when both buttons go position:fixed,
+     so the layout below (the speech bubble) doesn't jump up */
+  .yesno { display: flex; gap: 16px; justify-content: center; align-items: center; margin-top: 26px; min-height: 56px; flex-wrap: wrap; }
   .btn-yes {
     background: linear-gradient(135deg, #ff8fab, #ff6f91);
     color: #fff;
@@ -243,22 +245,31 @@
     color: #fff; box-shadow: 0 8px 18px rgba(255, 111, 145, 0.4);
   }
 
-  /* the "아니" teasing message — make it pop and stay clear of the growing Yes button */
+  /* the "아니" teasing message — a speech bubble that only takes up space
+     once there's something to say (no reserved gap when empty) */
   #noHint {
+    display: none;             /* collapses entirely while empty → no blank space */
     position: relative;
-    z-index: 60;               /* sit above the pinned/growing Yes button */
-    min-height: 24px;
-    margin-top: 54px;          /* leave room so the enlarged Yes button never covers it */
-    font-size: 17px;
+    z-index: 40;
+    margin: 16px auto 0;
+    max-width: 300px;
+    padding: 11px 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--pink);
+    background: var(--pink-bg);
+    border-radius: 16px;
+    box-shadow: 0 6px 16px rgba(255, 111, 145, 0.2);
   }
-  #noHint:not(:empty) {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 999px;
-    background: var(--pink-bg);   /* readable pill even if the button drifts close */
-    box-shadow: 0 4px 12px rgba(255, 111, 145, 0.18);
+  #noHint:not(:empty) { display: inline-block; }
+  /* little tail pointing up toward the buttons */
+  #noHint:not(:empty)::before {
+    content: "";
+    position: absolute;
+    top: -7px; left: 50%; transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--pink-bg);
   }
   #noHint.show { animation: teasePop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
   @keyframes teasePop {
