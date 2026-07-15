@@ -296,7 +296,7 @@
   <!-- STEP 2 -->
   <section class="step" id="step2">
     <h2>언제 만날까? 📅</h2>
-    <p class="sub">데이트하고 싶은 날짜를 골라줘</p>
+    <p class="sub">데이트하고 싶은 날짜를 골라줘 (여러 개 가능!)</p>
     <div class="cal" id="calendar"></div>
     <div class="nav">
       <button class="btn btn-ghost" data-prev>← 이전</button>
@@ -358,7 +358,7 @@
 
   // ---- state ----
   var state = {
-    date: null,          // {y, m, d}
+    dates: [],           // list of {y, m, d} — multiple dates can be picked
     activities: [],      // list of activity keys
     details: {}          // { activityKey: [selected options] }
   };
@@ -630,7 +630,7 @@
       var isPast = cellDate.getTime() < today.getTime();
       if (isPast) cls += " past";
       if (cellDate.getTime() === today.getTime()) cls += " today";
-      if (state.date && state.date.y === viewY && state.date.m === viewM && state.date.d === d) cls += " selected";
+      if (dateIndex(viewY, viewM, d) !== -1) cls += " selected";
       var attr = isPast ? '' : ' data-day="' + d + '"';
       html += '<div class="' + cls + '"' + attr + '>' + d + '</div>';
     }
@@ -651,14 +651,26 @@
     calWrap.querySelectorAll(".cal-day[data-day]").forEach(function (cell) {
       cell.addEventListener("click", function () {
         var d = parseInt(cell.getAttribute("data-day"), 10);
-        state.date = { y: viewY, m: viewM, d: d };
+        var idx = dateIndex(viewY, viewM, d);
+        if (idx === -1) state.dates.push({ y: viewY, m: viewM, d: d });  // toggle on
+        else state.dates.splice(idx, 1);                                 // toggle off
         renderCalendar();
-        $("toStep3").disabled = false;
+        $("toStep3").disabled = state.dates.length === 0;
       });
     });
   }
+
+  // index of a given day within the multi-select list (-1 if not selected)
+  function dateIndex(y, m, d) {
+    for (var i = 0; i < state.dates.length; i++) {
+      var x = state.dates[i];
+      if (x.y === y && x.m === m && x.d === d) return i;
+    }
+    return -1;
+  }
+
   renderCalendar();
-  $("toStep3").addEventListener("click", function () { if (state.date) goTo(2); });
+  $("toStep3").addEventListener("click", function () { if (state.dates.length) goTo(2); });
 
   // ============ STEP 3: activities ============
   var actWrap = $("activities");
@@ -721,17 +733,22 @@
   $("toFinish").addEventListener("click", function () { goTo(4); });
 
   // ============ FINAL: summary ============
-  function formatDate() {
-    if (!state.date) return "-";
-    var wds = ["일", "월", "화", "수", "목", "금", "토"];
-    var dt = new Date(state.date.y, state.date.m, state.date.d);
-    return state.date.y + "년 " + (state.date.m + 1) + "월 " + state.date.d + "일 (" + wds[dt.getDay()] + ")";
+  var WDS = ["일", "월", "화", "수", "목", "금", "토"];
+  function fmtDate(dd) {
+    var dt = new Date(dd.y, dd.m, dd.d);
+    return dd.y + "년 " + (dd.m + 1) + "월 " + dd.d + "일 (" + WDS[dt.getDay()] + ")";
+  }
+  // selected dates as formatted strings, sorted chronologically
+  function dateLines() {
+    return state.dates.slice()
+      .sort(function (a, b) { return new Date(a.y, a.m, a.d) - new Date(b.y, b.m, b.d); })
+      .map(fmtDate);
   }
 
   function buildSummary() {
     var s = $("summary");
     var rows = "";
-    rows += '<div class="row"><span class="ico">📅</span><div><div class="lbl">데이트 날짜</div><div class="val">' + formatDate() + '</div></div></div>';
+    rows += '<div class="row"><span class="ico">📅</span><div><div class="lbl">데이트 날짜</div><div class="val">' + (dateLines().join("<br>") || "-") + '</div></div></div>';
 
     var actLines = [];
     ACTIVITIES.forEach(function (a) {
@@ -750,7 +767,9 @@
     var lines = [];
     lines.push("💕 우리 데이트 약속 💕");
     lines.push("");
-    lines.push("📅 " + formatDate());
+    var dls = dateLines();
+    lines.push(dls.length > 1 ? "📅 데이트 가능한 날:" : "📅 데이트 날짜:");
+    dls.forEach(function (l) { lines.push("• " + l); });
     lines.push("");
     lines.push("하고 싶은 것:");
     ACTIVITIES.forEach(function (a) {
@@ -844,7 +863,11 @@
     });
     if (!actLines.length) actLines.push("(아직 안 골랐어요)");
 
-    var H = 394 + actLines.length * 36;   // fixed layout height + per-line height
+    var dLines = dateLines();
+    if (!dLines.length) dLines.push("-");
+
+    // fixed layout height already budgets one date line (34px); add the extras
+    var H = 394 + actLines.length * 36 + (dLines.length - 1) * 34;
 
     var canvas = document.createElement("canvas");
     canvas.width = W * S; canvas.height = H * S;
@@ -890,8 +913,8 @@
     ctx.fillText("📅 데이트 날짜", innerX, y);
     y += 24 + 4;
     ctx.fillStyle = "#4a2c3a"; ctx.font = fDate;
-    ctx.fillText(formatDate(), innerX, y);
-    y += 34 + 26;
+    dLines.forEach(function (l) { ctx.fillText(l, innerX, y); y += 34; });
+    y += 26;
 
     // activities
     ctx.fillStyle = "#9a7686"; ctx.font = fLabel;
@@ -924,7 +947,10 @@
 
   // ============ reply link (recipient → creator, no DB) ============
   function buildReplyPayload() {
-    var d = state.date ? [state.date.y, state.date.m, state.date.d] : null;
+    // array of [y, m, d] triples, sorted chronologically
+    var d = state.dates.slice()
+      .sort(function (a, b) { return new Date(a.y, a.m, a.d) - new Date(b.y, b.m, b.d); })
+      .map(function (x) { return [x.y, x.m, x.d]; });
     var c = [];
     ACTIVITIES.forEach(function (a) {
       if (state.activities.indexOf(a.key) === -1) return;
@@ -946,11 +972,16 @@
   // ============ reply view: creator opens the recipient's #r= link ============
   function renderReply() {
     var wds = ["일", "월", "화", "수", "목", "금", "토"];
-    var d = REPLY.d, dateStr = "-";
-    if (d && d.length === 3) {
-      var dt = new Date(d[0], d[1], d[2]);
-      dateStr = d[0] + "년 " + (d[1] + 1) + "월 " + d[2] + "일 (" + wds[dt.getDay()] + ")";
+    function fmtTriple(t) {
+      var dt = new Date(t[0], t[1], t[2]);
+      return t[0] + "년 " + (t[1] + 1) + "월 " + t[2] + "일 (" + wds[dt.getDay()] + ")";
     }
+    // REPLY.d is an array of [y,m,d] triples; accept a legacy single triple too
+    var triples = [];
+    if (Array.isArray(REPLY.d)) {
+      triples = (typeof REPLY.d[0] === "number") ? [REPLY.d] : REPLY.d;
+    }
+    var dateStr = triples.map(fmtTriple).join("<br>") || "-";
     var name = REPLY.n || "상대방";
     $("replyTitle").textContent = "데이트 수락! 🎉";
     $("replySub").textContent = name + "님이 이렇게 데이트하고 싶대요 💑";
