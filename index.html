@@ -211,6 +211,16 @@
 
   .hint { font-size: 12px; color: #c2a7b5; margin-top: 14px; }
 
+  .make-own { margin-top: 18px; margin-bottom: 0; }
+  .make-own a { color: #b892ff; font-size: 13px; font-weight: 600; text-decoration: none; }
+  .make-own a:hover { text-decoration: underline; }
+  .make-own-btn {
+    display: block; width: 100%; box-sizing: border-box;
+    text-decoration: none; margin-top: 4px;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; box-shadow: 0 8px 18px rgba(255, 111, 145, 0.4);
+  }
+
   /* the "아니" teasing message — make it pop and stay clear of the growing Yes button */
   #noHint {
     position: relative;
@@ -252,8 +262,8 @@
   <!-- STEP 1 -->
   <section class="step active" id="step1">
     <div class="big-heart">💕</div>
-    <h1>나랑 데이트할래?</h1>
-    <p class="sub">용기 내서 물어봐요 🥰</p>
+    <h1 id="qTitle">나랑 데이트할래?</h1>
+    <p class="sub" id="qSub">용기 내서 물어봐요 🥰</p>
     <div class="yesno" id="yesno">
       <button class="btn btn-yes" id="btnYes">응! 좋아 💗</button>
       <button class="btn btn-no" id="btnNo">아니</button>
@@ -300,9 +310,20 @@
     <h1>데이트 약속 완성!</h1>
     <p class="sub">이렇게 데이트하자 💑</p>
     <div class="summary" id="summary"></div>
-    <button class="btn btn-primary" style="width:100%" id="btnShare">📋 약속 내용 복사하기</button>
+    <button class="btn btn-primary" style="width:100%" id="btnReply">💌 답장 링크 복사하기</button>
+    <button class="btn btn-ghost" style="width:100%; margin-top:12px" id="btnShare">📋 내용 텍스트로 복사</button>
     <button class="btn btn-ghost" style="width:100%; margin-top:12px" id="btnSave">📸 이미지로 저장하기</button>
-    <p class="hint" id="shareHint">복사해서 나한테 보내줘! 💌</p>
+    <p class="hint" id="shareHint">답장 링크를 복사해서 신청한 사람에게 보내줘! 💌</p>
+    <p class="make-own"><a href="create.html">나도 데이트 신청 만들기 →</a></p>
+  </section>
+
+  <!-- REPLY VIEW (creator opens the recipient's answer link) -->
+  <section class="step" id="stepReply">
+    <div class="big-heart">🎉</div>
+    <h1 id="replyTitle">데이트 수락!</h1>
+    <p class="sub" id="replySub">이렇게 데이트하고 싶대요 💑</p>
+    <div class="summary" id="replySummary"></div>
+    <a class="btn make-own-btn" href="create.html">💕 나도 데이트 신청 만들기</a>
   </section>
 </div>
 
@@ -320,17 +341,51 @@
     details: {}          // { activityKey: [selected options] }
   };
 
-  // ---- activity definitions ----
-  var ACTIVITIES = [
-    { key: "meal",   emoji: "🍽️", label: "식사하기", q: "뭘 먹고 싶어?",     opts: ["돈까스", "밀면", "떡볶이", "파스타", "초밥", "고기"] },
-    { key: "movie",  emoji: "🎬", label: "영화보기", q: "무슨 영화 볼까?",    opts: ["액션", "로맨스", "코미디", "공포", "애니메이션"] },
-    { key: "cafe",   emoji: "☕", label: "카페가기", q: "어떤 카페 갈까?",    opts: ["조용한 카페", "디저트 맛집", "뷰 좋은 곳", "브런치 카페"] },
-    { key: "walk",   emoji: "🚶", label: "산책하기", q: "어디서 산책할까?",   opts: ["한강", "공원", "바닷가", "예쁜 골목길"] },
-    { key: "shop",   emoji: "🛍️", label: "쇼핑하기", q: "뭐 사러 갈까?",     opts: ["옷", "신발", "소품", "화장품"] },
-    { key: "drive",  emoji: "🚗", label: "드라이브", q: "어디로 드라이브?",   opts: ["바다", "산", "야경 명소", "드라이브 카페"] },
-    { key: "game",   emoji: "🎮", label: "게임하기", q: "무슨 게임 할까?",    opts: ["방탈출", "오락실", "보드게임", "PC방"] },
-    { key: "home",   emoji: "🏠", label: "집데이트", q: "집에서 뭐 할까?",    opts: ["넷플릭스", "요리", "보드게임", "낮잠"] }
+  // ---- URL-safe UTF-8 base64 (all config/replies live in the URL, no DB) ----
+  function encodeData(obj) {
+    var b = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function decodeData(str) {
+    var b = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(b))));
+  }
+  function baseUrl() { return location.href.split("#")[0]; }
+
+  // ---- default activity definitions ----
+  var DEFAULT_ACTIVITIES = [
+    { emoji: "🍽️", label: "식사하기", q: "뭘 먹고 싶어?",   opts: ["돈까스", "밀면", "떡볶이", "파스타", "초밥", "고기"] },
+    { emoji: "🎬", label: "영화보기", q: "무슨 영화 볼까?",  opts: ["액션", "로맨스", "코미디", "공포", "애니메이션"] },
+    { emoji: "☕", label: "카페가기", q: "어떤 카페 갈까?",  opts: ["조용한 카페", "디저트 맛집", "뷰 좋은 곳", "브런치 카페"] },
+    { emoji: "🚶", label: "산책하기", q: "어디서 산책할까?", opts: ["한강", "공원", "바닷가", "예쁜 골목길"] },
+    { emoji: "🛍️", label: "쇼핑하기", q: "뭐 사러 갈까?",   opts: ["옷", "신발", "소품", "화장품"] },
+    { emoji: "🚗", label: "드라이브", q: "어디로 드라이브?", opts: ["바다", "산", "야경 명소", "드라이브 카페"] },
+    { emoji: "🎮", label: "게임하기", q: "무슨 게임 할까?",  opts: ["방탈출", "오락실", "보드게임", "PC방"] },
+    { emoji: "🏠", label: "집데이트", q: "집에서 뭐 할까?",  opts: ["넷플릭스", "요리", "보드게임", "낮잠"] }
   ];
+
+  // ---- read mode + config from the URL hash ----
+  //   #c=...  → customized invitation   |   #r=...  → reply view (creator sees answer)
+  var hash = location.hash || "";
+  var MODE = "invite";
+  var CONFIG = null, REPLY = null;
+  try {
+    if (hash.indexOf("#r=") === 0) { MODE = "reply"; REPLY = decodeData(hash.slice(3)); }
+    else if (hash.indexOf("#c=") === 0) { CONFIG = decodeData(hash.slice(3)); }
+  } catch (e) { CONFIG = null; REPLY = null; }
+
+  // ---- build ACTIVITIES from config (short keys e/l/q/o) or defaults ----
+  var srcActs = (CONFIG && CONFIG.a && CONFIG.a.length) ? CONFIG.a : DEFAULT_ACTIVITIES;
+  var ACTIVITIES = srcActs.map(function (a, i) {
+    return {
+      key: "a" + i,
+      emoji: a.emoji || a.e || "💗",
+      label: a.label || a.l || "활동",
+      q: a.q || "뭐 하고 싶어?",
+      opts: a.opts || a.o || []
+    };
+  });
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -348,6 +403,15 @@
       s.style.fontSize = (16 + Math.random() * 18) + "px";
       wrap.appendChild(s);
     }
+  })();
+
+  // ============ apply custom invitation text ============
+  (function applyConfig() {
+    if (!CONFIG) return;
+    if (CONFIG.q) $("qTitle").textContent = CONFIG.q;
+    else if (CONFIG.n) $("qTitle").textContent = CONFIG.n + "야, 나랑 데이트할래?";
+    if (CONFIG.s) $("qSub").textContent = CONFIG.s;
+    if (CONFIG.n) document.title = $("qTitle").textContent + " 💕";
   })();
 
   // ============ step navigation ============
@@ -802,6 +866,56 @@
   }
 
   $("btnSave").addEventListener("click", saveImage);
+
+  // ============ reply link (recipient → creator, no DB) ============
+  function buildReplyPayload() {
+    var d = state.date ? [state.date.y, state.date.m, state.date.d] : null;
+    var c = [];
+    ACTIVITIES.forEach(function (a) {
+      if (state.activities.indexOf(a.key) === -1) return;
+      c.push({ e: a.emoji, l: a.label, o: (state.details[a.key] || []) });
+    });
+    var payload = { d: d, c: c };
+    if (CONFIG && CONFIG.n) payload.n = CONFIG.n; // carry the name back to the creator
+    return payload;
+  }
+
+  $("btnReply").addEventListener("click", function () {
+    var link = baseUrl() + "#r=" + encodeData(buildReplyPayload());
+    function done() { $("shareHint").textContent = "답장 링크 복사 완료! 신청한 사람에게 보내줘 💌"; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(done, function () { fallbackCopy(link); done(); });
+    } else { fallbackCopy(link); done(); }
+  });
+
+  // ============ reply view: creator opens the recipient's #r= link ============
+  function renderReply() {
+    var wds = ["일", "월", "화", "수", "목", "금", "토"];
+    var d = REPLY.d, dateStr = "-";
+    if (d && d.length === 3) {
+      var dt = new Date(d[0], d[1], d[2]);
+      dateStr = d[0] + "년 " + (d[1] + 1) + "월 " + d[2] + "일 (" + wds[dt.getDay()] + ")";
+    }
+    var name = REPLY.n || "상대방";
+    $("replyTitle").textContent = "데이트 수락! 🎉";
+    $("replySub").textContent = name + "님이 이렇게 데이트하고 싶대요 💑";
+    document.title = "데이트 수락! 🎉";
+
+    var rows = '<div class="row"><span class="ico">📅</span><div><div class="lbl">데이트 날짜</div><div class="val">' + dateStr + '</div></div></div>';
+    var lines = (REPLY.c || []).map(function (c) {
+      var line = (c.e || "💝") + " " + (c.l || "");
+      if (c.o && c.o.length) line += " <span style='color:#9a7686'>— " + c.o.join(", ") + "</span>";
+      return line;
+    });
+    rows += '<div class="row"><span class="ico">💝</span><div><div class="lbl">하고 싶은 것</div><div class="val">' + (lines.join("<br>") || "-") + '</div></div></div>';
+    $("replySummary").innerHTML = rows;
+
+    $("progress").style.display = "none";
+    $(steps[current]).classList.remove("active");
+    $("stepReply").classList.add("active");
+  }
+
+  if (MODE === "reply" && REPLY) renderReply();
 
 })();
 </script>

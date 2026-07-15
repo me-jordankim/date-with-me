@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>데이트 신청 만들기 💌</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="alternate icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E💗%3C/text%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="favicon.svg" />
+<style>
+  :root {
+    --pink: #ff6f91;
+    --pink-soft: #ffb3c6;
+    --pink-bg: #fff0f5;
+    --purple: #b892ff;
+    --text: #4a2c3a;
+    --muted: #9a7686;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+    color: var(--text);
+  }
+  body {
+    min-height: 100dvh;
+    background: linear-gradient(160deg, #ffe1ec 0%, #ffeaf2 40%, #f3e8ff 100%);
+    padding: 24px 16px 48px;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 560px; }
+
+  .head { text-align: center; margin-bottom: 22px; }
+  .head .big { font-size: 46px; }
+  .head h1 { font-size: 24px; margin: 6px 0 6px; }
+  .head p { color: var(--muted); font-size: 14px; }
+
+  .card {
+    background: var(--white);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(255, 111, 145, 0.2);
+    padding: 22px 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 17px; margin-bottom: 4px; }
+  .card .desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+  label.field { display: block; margin-bottom: 14px; }
+  label.field .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%;
+    border: 2px solid #f0e2ea;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--pink-soft); }
+  input::placeholder { color: #c9b3bf; }
+
+  /* activity cards */
+  .act-card {
+    background: #faf3f7;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .act-top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .emoji-in {
+    width: 54px; text-align: center; flex: 0 0 auto;
+    border: 2px solid #f0e2ea; border-radius: 12px; padding: 12px 6px;
+    font-size: 20px; font-family: inherit; background: #fff;
+  }
+  .emoji-in:focus { outline: none; border-color: var(--pink-soft); }
+  .label-in { flex: 1 1 auto; }
+  .del {
+    flex: 0 0 auto; width: 40px; height: 44px;
+    border: none; border-radius: 12px; background: #ffe1ea; color: var(--pink);
+    font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.15s;
+  }
+  .del:hover { background: var(--pink); color: #fff; }
+  .act-card input.q-in { margin-bottom: 8px; }
+
+  .btn {
+    border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
+    padding: 14px 20px; cursor: pointer; font-family: inherit; transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+  }
+  .btn-add {
+    width: 100%; background: var(--pink-bg); color: var(--pink);
+    border: 2px dashed var(--pink-soft);
+  }
+  .btn-add:hover { background: #ffe1ea; }
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; box-shadow: 0 8px 18px rgba(255, 111, 145, 0.4);
+    font-size: 18px; padding: 16px;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(255, 111, 145, 0.5); }
+  .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+  /* result */
+  .result { display: none; }
+  .result.show { display: block; animation: pop 0.4s ease; }
+  @keyframes pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .link-box {
+    width: 100%; border: 2px solid var(--pink-soft); border-radius: 12px;
+    padding: 12px 14px; font-size: 13px; font-family: inherit; color: var(--text);
+    background: #fff; resize: none; word-break: break-all; margin-bottom: 12px;
+  }
+  .result-btns { display: flex; gap: 10px; }
+  .result-btns .btn { flex: 1; font-size: 15px; padding: 13px; }
+  .btn-ghost { background: #f3e8ef; color: #a98ba0; }
+  .btn-ghost:hover { background: #ecdae6; }
+  .ok-msg { text-align: center; font-size: 13px; color: var(--pink); font-weight: 700; margin-top: 12px; min-height: 18px; }
+
+  .foot { text-align: center; margin-top: 6px; }
+  .foot a { color: var(--muted); font-size: 13px; text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="big">💌</div>
+    <h1>데이트 신청 만들기</h1>
+    <p>내용을 채우고 링크를 만들어서 보내보세요</p>
+  </div>
+
+  <!-- basic info -->
+  <div class="card">
+    <h2>기본 정보</h2>
+    <p class="desc">받는 사람과 첫 화면 문구를 정해요</p>
+    <label class="field">
+      <span class="lbl">받는 사람 이름 / 애칭</span>
+      <input type="text" id="name" placeholder="예: 지훈, 자기, 오빠…" />
+    </label>
+    <label class="field">
+      <span class="lbl">첫 질문 문구 <span style="font-weight:400">(비우면 "○○야, 나랑 데이트할래?")</span></span>
+      <input type="text" id="question" placeholder="예: 나랑 데이트할래?" />
+    </label>
+    <label class="field" style="margin-bottom:0">
+      <span class="lbl">안내 문구</span>
+      <input type="text" id="sub" placeholder="예: 용기 내서 물어봐요 🥰" />
+    </label>
+  </div>
+
+  <!-- activities -->
+  <div class="card">
+    <h2>하고 싶은 활동</h2>
+    <p class="desc">이모지 · 활동 이름 · 질문 · 선택지(쉼표로 구분)를 자유롭게 수정하세요</p>
+    <div id="actList"></div>
+    <button class="btn btn-add" id="addAct">+ 활동 추가</button>
+  </div>
+
+  <!-- generate -->
+  <button class="btn btn-primary" id="makeLink">🔗 초대 링크 만들기</button>
+
+  <div class="card result" id="result" style="margin-top:18px">
+    <h2>완성! 이 링크를 보내세요 🎉</h2>
+    <p class="desc">카톡·DM으로 보내면, 상대가 열어서 데이트를 수락하고 답장 링크를 보내줘요</p>
+    <textarea class="link-box" id="linkBox" rows="3" readonly></textarea>
+    <div class="result-btns">
+      <button class="btn btn-primary" id="copyLink" style="font-size:15px; padding:13px">📋 링크 복사</button>
+      <button class="btn btn-ghost" id="openLink">👀 미리보기</button>
+    </div>
+    <p class="ok-msg" id="okMsg"></p>
+  </div>
+
+  <div class="foot">
+    <a href="index.html">← 기본 데이트 신청 화면 보기</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  // URL-safe UTF-8 base64 (must match index.html)
+  function encodeData(obj) {
+    var b = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  var DEFAULTS = [
+    { e: "🍽️", l: "식사하기", q: "뭘 먹고 싶어?",   o: "돈까스, 밀면, 떡볶이, 파스타, 초밥, 고기" },
+    { e: "🎬", l: "영화보기", q: "무슨 영화 볼까?",  o: "액션, 로맨스, 코미디, 공포, 애니메이션" },
+    { e: "☕", l: "카페가기", q: "어떤 카페 갈까?",  o: "조용한 카페, 디저트 맛집, 뷰 좋은 곳, 브런치 카페" },
+    { e: "🚶", l: "산책하기", q: "어디서 산책할까?", o: "한강, 공원, 바닷가, 예쁜 골목길" },
+    { e: "🛍️", l: "쇼핑하기", q: "뭐 사러 갈까?",   o: "옷, 신발, 소품, 화장품" },
+    { e: "🚗", l: "드라이브", q: "어디로 드라이브?", o: "바다, 산, 야경 명소, 드라이브 카페" },
+    { e: "🎮", l: "게임하기", q: "무슨 게임 할까?",  o: "방탈출, 오락실, 보드게임, PC방" },
+    { e: "🏠", l: "집데이트", q: "집에서 뭐 할까?",  o: "넷플릭스, 요리, 보드게임, 낮잠" }
+  ];
+
+  var listEl = $("actList");
+
+  function addActivity(a) {
+    a = a || { e: "💗", l: "", q: "", o: "" };
+    var card = document.createElement("div");
+    card.className = "act-card";
+    card.innerHTML =
+      '<div class="act-top">' +
+        '<input type="text" class="emoji-in" maxlength="4" value="' + esc(a.e) + '" aria-label="이모지" />' +
+        '<input type="text" class="label-in" placeholder="활동 이름 (예: 식사하기)" value="' + esc(a.l) + '" />' +
+        '<button class="del" type="button" title="삭제">✕</button>' +
+      '</div>' +
+      '<input type="text" class="q-in" placeholder="4단계 질문 (예: 뭘 먹고 싶어?)" value="' + esc(a.q) + '" />' +
+      '<input type="text" class="o-in" placeholder="선택지 — 쉼표로 구분 (예: 돈까스, 밀면)" value="' + esc(a.o) + '" />';
+    card.querySelector(".del").addEventListener("click", function () {
+      card.remove();
+    });
+    listEl.appendChild(card);
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // seed with defaults
+  DEFAULTS.forEach(addActivity);
+  $("addAct").addEventListener("click", function () { addActivity(); });
+
+  // build the config object from the form
+  function buildConfig() {
+    var cfg = {};
+    var n = $("name").value.trim(); if (n) cfg.n = n;
+    var q = $("question").value.trim(); if (q) cfg.q = q;
+    var s = $("sub").value.trim(); if (s) cfg.s = s;
+
+    var acts = [];
+    listEl.querySelectorAll(".act-card").forEach(function (card) {
+      var e = card.querySelector(".emoji-in").value.trim() || "💗";
+      var l = card.querySelector(".label-in").value.trim();
+      if (!l) return; // skip rows with no activity name
+      var qq = card.querySelector(".q-in").value.trim() || "뭐 하고 싶어?";
+      var o = card.querySelector(".o-in").value.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+      acts.push({ e: e, l: l, q: qq, o: o });
+    });
+    cfg.a = acts;
+    return cfg;
+  }
+
+  // where index.html lives (same folder as this page)
+  function inviteBase() {
+    return location.href.split(/[?#]/)[0].replace(/[^\/]*$/, "index.html");
+  }
+
+  $("makeLink").addEventListener("click", function () {
+    var cfg = buildConfig();
+    if (!cfg.a.length) {
+      alert("활동을 하나 이상 추가해주세요 🙏");
+      return;
+    }
+    var link = inviteBase() + "#c=" + encodeData(cfg);
+    $("linkBox").value = link;
+    $("result").classList.add("show");
+    $("okMsg").textContent = "";
+    $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  $("copyLink").addEventListener("click", function () {
+    var link = $("linkBox").value;
+    function done() { $("okMsg").textContent = "복사 완료! 상대에게 보내주세요 💌"; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(done, function () { fallbackCopy(link); done(); });
+    } else { fallbackCopy(link); done(); }
+  });
+
+  $("openLink").addEventListener("click", function () {
+    var link = $("linkBox").value;
+    if (link) window.open(link, "_blank");
+  });
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+</script>
+</body>
+</html>
