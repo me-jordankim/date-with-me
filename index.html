@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>나랑 데이트할래? 💕</title>
+<style>
+  :root {
+    --pink: #ff6f91;
+    --pink-soft: #ffb3c6;
+    --pink-bg: #fff0f5;
+    --purple: #b892ff;
+    --text: #4a2c3a;
+    --white: #ffffff;
+    --shadow: 0 10px 30px rgba(255, 111, 145, 0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+    color: var(--text);
+  }
+
+  body {
+    min-height: 100dvh;
+    background: linear-gradient(160deg, #ffe1ec 0%, #ffeaf2 40%, #f3e8ff 100%);
+    display: flex;
+    align-items: flex-start;   /* auto-margins on the card handle vertical centering */
+    justify-content: center;
+    padding: 20px;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* floating hearts background */
+  .bg-hearts { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .bg-hearts span {
+    position: absolute;
+    bottom: -40px;
+    font-size: 22px;
+    opacity: 0.5;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    to { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+  }
+
+  .card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    margin: auto;              /* centers vertically when it fits, scrolls when it doesn't */
+    background: var(--white);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 32px 26px 34px;
+    text-align: center;
+    animation: popIn 0.5s cubic-bezier(0.2, 1.3, 0.4, 1);
+  }
+  @keyframes popIn {
+    from { transform: scale(0.85) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* progress dots */
+  .progress { display: flex; gap: 8px; justify-content: center; margin-bottom: 22px; }
+  .progress .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--pink-soft); opacity: 0.4; transition: 0.3s;
+  }
+  .progress .dot.active { opacity: 1; background: var(--pink); transform: scale(1.25); }
+
+  h1 { font-size: 26px; line-height: 1.4; margin-bottom: 10px; }
+  h2 { font-size: 22px; line-height: 1.4; margin-bottom: 8px; }
+  .sub { color: #9a7686; font-size: 15px; margin-bottom: 24px; }
+
+  .step { display: none; }
+  .step.active { display: block; animation: fadeSlide 0.45s ease; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .btn {
+    border: none;
+    border-radius: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 15px 26px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(255, 111, 145, 0.4);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(255, 111, 145, 0.5); }
+  .btn-primary:active { transform: translateY(0) scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* step 1 buttons */
+  .yesno { display: flex; gap: 16px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+  .btn-yes {
+    background: linear-gradient(135deg, #ff8fab, #ff6f91);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(255, 111, 145, 0.45);
+    transition: transform 0.15s, font-size 0.3s;
+  }
+  .btn-yes:hover { transform: translateY(-3px) scale(1.04); }
+  .btn-no {
+    background: #f0e6ec;
+    color: #a98ba0;
+  }
+  /* on desktop the no-button dodges — position it absolutely when fleeing */
+  .btn-no.fleeing {
+    position: fixed;
+    z-index: 50;
+    transition: left 0.12s ease, top 0.12s ease;
+  }
+
+  /* calendar */
+  .cal { user-select: none; }
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-head button {
+    border: none; background: var(--pink-bg); color: var(--pink);
+    width: 38px; height: 38px; border-radius: 12px; font-size: 20px;
+    cursor: pointer; font-weight: 700; transition: 0.2s;
+  }
+  .cal-head button:hover { background: var(--pink-soft); color: #fff; }
+  .cal-title { font-size: 18px; font-weight: 700; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-grid .wd { font-size: 12px; color: #b79aa8; padding: 6px 0; font-weight: 600; }
+  .cal-day {
+    aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; font-size: 15px; cursor: pointer;
+    transition: 0.15s; color: var(--text);
+  }
+  .cal-day.empty { cursor: default; }
+  .cal-day.past { color: #d8c6d0; cursor: not-allowed; }
+  .cal-day.sun { color: #ff8fab; }
+  .cal-day:not(.empty):not(.past):hover { background: var(--pink-bg); }
+  .cal-day.selected {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; font-weight: 700; transform: scale(1.05);
+  }
+  .cal-day.today { box-shadow: inset 0 0 0 2px var(--pink-soft); }
+
+  /* activity checkboxes */
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+  .opt {
+    position: relative; display: flex; align-items: center; gap: 10px;
+    padding: 16px 14px; border-radius: 16px; cursor: pointer;
+    background: #faf3f7; border: 2px solid transparent; transition: 0.18s;
+    text-align: left; font-size: 15px; font-weight: 600;
+  }
+  .opt:hover { background: var(--pink-bg); }
+  .opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .opt .emoji { font-size: 22px; }
+  .opt.checked {
+    background: var(--pink-bg);
+    border-color: var(--pink);
+    box-shadow: 0 4px 12px rgba(255, 111, 145, 0.2);
+  }
+  .opt.checked::after {
+    content: "✓"; position: absolute; top: 8px; right: 10px;
+    color: var(--pink); font-weight: 900; font-size: 14px;
+  }
+
+  /* step 4 grouped options */
+  .group { margin-bottom: 22px; text-align: left; }
+  .group h3 { font-size: 17px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    padding: 10px 16px; border-radius: 999px; background: #faf3f7;
+    border: 2px solid transparent; cursor: pointer; font-size: 14px;
+    font-weight: 600; transition: 0.18s; color: var(--text);
+  }
+  .chip:hover { background: var(--pink-bg); }
+  .chip.checked {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; border-color: transparent;
+  }
+
+  .nav { display: flex; gap: 12px; margin-top: 26px; }
+  .nav .btn { flex: 1; }
+  .btn-ghost { background: #f3e8ef; color: #a98ba0; }
+  .btn-ghost:hover { background: #ecdae6; }
+
+  /* final summary */
+  .summary { text-align: left; background: var(--pink-bg); border-radius: 18px; padding: 20px; margin: 20px 0; }
+  .summary .row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .summary .row:last-child { margin-bottom: 0; }
+  .summary .ico { font-size: 20px; }
+  .summary .lbl { font-size: 13px; color: #9a7686; margin-bottom: 3px; }
+  .summary .val { font-size: 15px; font-weight: 600; line-height: 1.5; }
+
+  .big-heart { font-size: 60px; animation: beat 1s ease-in-out infinite; display: inline-block; }
+  @keyframes beat { 0%,100%{transform:scale(1);} 25%{transform:scale(1.2);} 50%{transform:scale(0.95);} }
+
+  .hint { font-size: 12px; color: #c2a7b5; margin-top: 14px; }
+
+  /* the "아니" teasing message — make it pop and stay clear of the growing Yes button */
+  #noHint {
+    position: relative;
+    z-index: 60;               /* sit above the pinned/growing Yes button */
+    min-height: 24px;
+    margin-top: 54px;          /* leave room so the enlarged Yes button never covers it */
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--pink);
+  }
+  #noHint:not(:empty) {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--pink-bg);   /* readable pill even if the button drifts close */
+    box-shadow: 0 4px 12px rgba(255, 111, 145, 0.18);
+  }
+  #noHint.show { animation: teasePop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+  @keyframes teasePop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @media (max-width: 380px) {
+    h1 { font-size: 23px; }
+    .options { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-hearts" id="bgHearts"></div>
+
+<div class="card">
+  <div class="progress" id="progress">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step active" id="step1">
+    <div class="big-heart">💕</div>
+    <h1>나랑 데이트할래?</h1>
+    <p class="sub">용기 내서 물어봐요 🥰</p>
+    <div class="yesno" id="yesno">
+      <button class="btn btn-yes" id="btnYes">응! 좋아 💗</button>
+      <button class="btn btn-no" id="btnNo">아니</button>
+    </div>
+    <p class="hint" id="noHint"></p>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step" id="step2">
+    <h2>언제 만날까? 📅</h2>
+    <p class="sub">데이트하고 싶은 날짜를 골라줘</p>
+    <div class="cal" id="calendar"></div>
+    <div class="nav">
+      <button class="btn btn-ghost" data-prev>← 이전</button>
+      <button class="btn btn-primary" id="toStep3" disabled>다음 →</button>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step" id="step3">
+    <h2>뭐 하고 싶어? 🎈</h2>
+    <p class="sub">같이 하고 싶은 걸 다 골라줘 (여러 개 가능!)</p>
+    <div class="options" id="activities"></div>
+    <div class="nav">
+      <button class="btn btn-ghost" data-prev>← 이전</button>
+      <button class="btn btn-primary" id="toStep4" disabled>다음 →</button>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step" id="step4">
+    <h2>좀 더 자세히! ✨</h2>
+    <p class="sub">고른 것마다 원하는 걸 정해줘</p>
+    <div id="detailGroups"></div>
+    <div class="nav">
+      <button class="btn btn-ghost" data-prev>← 이전</button>
+      <button class="btn btn-primary" id="toFinish">완성하기 💖</button>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="step" id="stepFinal">
+    <div class="big-heart">🎉</div>
+    <h1>데이트 약속 완성!</h1>
+    <p class="sub">이렇게 데이트하자 💑</p>
+    <div class="summary" id="summary"></div>
+    <button class="btn btn-primary" style="width:100%" id="btnShare">📋 약속 내용 복사하기</button>
+    <p class="hint" id="shareHint">복사해서 나한테 보내줘! 💌</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- device detection ----
+  var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  // ---- state ----
+  var state = {
+    date: null,          // {y, m, d}
+    activities: [],      // list of activity keys
+    details: {}          // { activityKey: [selected options] }
+  };
+
+  // ---- activity definitions ----
+  var ACTIVITIES = [
+    { key: "meal",   emoji: "🍽️", label: "식사하기", q: "뭘 먹고 싶어?",     opts: ["돈까스", "밀면", "떡볶이", "파스타", "초밥", "고기"] },
+    { key: "movie",  emoji: "🎬", label: "영화보기", q: "무슨 영화 볼까?",    opts: ["액션", "로맨스", "코미디", "공포", "애니메이션"] },
+    { key: "cafe",   emoji: "☕", label: "카페가기", q: "어떤 카페 갈까?",    opts: ["조용한 카페", "디저트 맛집", "뷰 좋은 곳", "브런치 카페"] },
+    { key: "walk",   emoji: "🚶", label: "산책하기", q: "어디서 산책할까?",   opts: ["한강", "공원", "바닷가", "예쁜 골목길"] },
+    { key: "shop",   emoji: "🛍️", label: "쇼핑하기", q: "뭐 사러 갈까?",     opts: ["옷", "신발", "소품", "화장품"] },
+    { key: "drive",  emoji: "🚗", label: "드라이브", q: "어디로 드라이브?",   opts: ["바다", "산", "야경 명소", "드라이브 카페"] },
+    { key: "game",   emoji: "🎮", label: "게임하기", q: "무슨 게임 할까?",    opts: ["방탈출", "오락실", "보드게임", "PC방"] },
+    { key: "home",   emoji: "🏠", label: "집데이트", q: "집에서 뭐 할까?",    opts: ["넷플릭스", "요리", "보드게임", "낮잠"] }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ============ background hearts ============
+  (function makeHearts() {
+    var wrap = $("bgHearts");
+    var emojis = ["💗", "💕", "💖", "🩷", "💘"];
+    for (var i = 0; i < 14; i++) {
+      var s = document.createElement("span");
+      s.textContent = emojis[i % emojis.length];
+      s.style.left = (Math.random() * 100) + "%";
+      var dur = 8 + Math.random() * 10;
+      s.style.animationDuration = dur + "s";
+      s.style.animationDelay = (-Math.random() * dur) + "s";
+      s.style.fontSize = (16 + Math.random() * 18) + "px";
+      wrap.appendChild(s);
+    }
+  })();
+
+  // ============ step navigation ============
+  var steps = ["step1", "step2", "step3", "step4", "stepFinal"];
+  var current = 0;
+
+  function goTo(index) {
+    if (index === 3) buildDetails();     // build step 4 from step 3 choices
+    if (index === 4) buildSummary();     // build final summary
+    $(steps[current]).classList.remove("active");
+    current = index;
+    $(steps[current]).classList.add("active");
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function updateProgress() {
+    var dots = $("progress").children;
+    // 5 screens map onto 4 dots; final keeps all lit
+    var lit = Math.min(current, 3);
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle("active", i <= lit);
+    }
+  }
+  updateProgress();
+
+  // previous buttons
+  var prevBtns = document.querySelectorAll("[data-prev]");
+  prevBtns.forEach(function (b) {
+    b.addEventListener("click", function () { goTo(current - 1); });
+  });
+
+  // ============ STEP 1: yes / no ============
+  var btnYes = $("btnYes");
+  var btnNo = $("btnNo");
+  var noHint = $("noHint");
+  var dodgeCount = 0;
+  var teasing = [
+    "에이~ 다시 생각해봐 🥺",
+    "정말? 진짜로? 🙈",
+    "안 돼안 돼, 눌러줘 💔",
+    "한 번만 더 생각해줘 🥹",
+    "'응' 이 더 커보이지 않아? 😆",
+    "도망 못 가지롱~ 🏃💨",
+    "포기 안 할 거야 💗"
+  ];
+
+  btnYes.addEventListener("click", function () { goTo(1); });
+
+  if (isTouch) {
+    // MOBILE: teleport the No button to a random spot, and grow the Yes button
+    btnNo.addEventListener("click", function (e) {
+      e.preventDefault();
+      teaseAndMoveMobile();
+    });
+  } else {
+    // DESKTOP: No button dodges the mouse
+    btnNo.addEventListener("mouseenter", dodgeDesktop);
+    btnNo.addEventListener("mousemove", dodgeDesktop);
+    btnNo.addEventListener("click", function (e) {
+      e.preventDefault();
+      dodgeDesktop();
+    });
+  }
+
+  function nextTease() {
+    noHint.textContent = teasing[dodgeCount % teasing.length];
+    // restart the pop animation on every update
+    noHint.classList.remove("show");
+    void noHint.offsetWidth;
+    noHint.classList.add("show");
+    dodgeCount++;
+    // grow the Yes button IN PLACE — transform:scale doesn't affect layout,
+    // and transform-origin:center keeps its center point fixed.
+    var scale = Math.min(1 + dodgeCount * 0.05, 1.4);
+    btnYes.style.transform = "scale(" + scale + ")";
+  }
+
+  // pin the Yes button where it currently sits so that when the No button
+  // leaves the flex flow (goes fixed), Yes doesn't get re-centered / shifted.
+  function pinYesInPlace() {
+    if (btnYes.dataset.pinned) return;
+    var r = btnYes.getBoundingClientRect();
+    btnYes.style.position = "fixed";
+    btnYes.style.left = r.left + "px";
+    btnYes.style.top = r.top + "px";
+    btnYes.style.width = r.width + "px";
+    btnYes.style.height = r.height + "px";
+    btnYes.style.margin = "0";
+    btnYes.style.transformOrigin = "center center";
+    btnYes.dataset.pinned = "1";
+  }
+
+  // when the button first starts fleeing, pin it to its CURRENT on-screen
+  // position (so it doesn't snap from the flex layout), then force a reflow
+  // so the very first move animates smoothly like the following ones.
+  function startFleeingIfNeeded() {
+    if (btnNo.classList.contains("fleeing")) return;
+    pinYesInPlace(); // lock Yes so it doesn't shift when No leaves the flow
+    var rect = btnNo.getBoundingClientRect();
+    btnNo.style.width = rect.width + "px";
+    btnNo.style.height = rect.height + "px";
+    btnNo.classList.add("fleeing");
+    btnNo.style.left = rect.left + "px";
+    btnNo.style.top = rect.top + "px";
+    void btnNo.offsetWidth; // flush layout so the transition has a start point
+  }
+
+  function moveNoTo(pad) {
+    var bw = btnNo.offsetWidth || 90;
+    var bh = btnNo.offsetHeight || 52;
+    var maxX = window.innerWidth - bw - pad;
+    var maxY = window.innerHeight - bh - pad;
+    var x = pad + Math.random() * Math.max(0, maxX - pad);
+    var y = pad + Math.random() * Math.max(0, maxY - pad);
+    btnNo.style.left = x + "px";
+    btnNo.style.top = y + "px";
+  }
+
+  function teaseAndMoveMobile() {
+    nextTease();
+    startFleeingIfNeeded();
+    moveNoTo(12);
+  }
+
+  function dodgeDesktop() {
+    nextTease();
+    startFleeingIfNeeded();
+    moveNoTo(16);
+  }
+
+  // ============ STEP 2: calendar ============
+  var calWrap = $("calendar");
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var viewY = today.getFullYear();
+  var viewM = today.getMonth(); // 0-based
+
+  function renderCalendar() {
+    var wds = ["일", "월", "화", "수", "목", "금", "토"];
+    var first = new Date(viewY, viewM, 1);
+    var startDow = first.getDay();
+    var daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+
+    var html = '';
+    html += '<div class="cal-head">';
+    html += '<button type="button" id="calPrev" aria-label="이전 달">‹</button>';
+    html += '<div class="cal-title">' + viewY + '년 ' + (viewM + 1) + '월</div>';
+    html += '<button type="button" id="calNext" aria-label="다음 달">›</button>';
+    html += '</div>';
+    html += '<div class="cal-grid">';
+    for (var w = 0; w < 7; w++) html += '<div class="wd">' + wds[w] + '</div>';
+    for (var e = 0; e < startDow; e++) html += '<div class="cal-day empty"></div>';
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var cellDate = new Date(viewY, viewM, d);
+      cellDate.setHours(0, 0, 0, 0);
+      var cls = "cal-day";
+      var dow = cellDate.getDay();
+      if (dow === 0) cls += " sun";
+      var isPast = cellDate.getTime() < today.getTime();
+      if (isPast) cls += " past";
+      if (cellDate.getTime() === today.getTime()) cls += " today";
+      if (state.date && state.date.y === viewY && state.date.m === viewM && state.date.d === d) cls += " selected";
+      var attr = isPast ? '' : ' data-day="' + d + '"';
+      html += '<div class="' + cls + '"' + attr + '>' + d + '</div>';
+    }
+    html += '</div>';
+    calWrap.innerHTML = html;
+
+    $("calPrev").addEventListener("click", function () {
+      // don't navigate before current month
+      if (viewY === today.getFullYear() && viewM === today.getMonth()) return;
+      viewM--; if (viewM < 0) { viewM = 11; viewY--; }
+      renderCalendar();
+    });
+    $("calNext").addEventListener("click", function () {
+      viewM++; if (viewM > 11) { viewM = 0; viewY++; }
+      renderCalendar();
+    });
+
+    calWrap.querySelectorAll(".cal-day[data-day]").forEach(function (cell) {
+      cell.addEventListener("click", function () {
+        var d = parseInt(cell.getAttribute("data-day"), 10);
+        state.date = { y: viewY, m: viewM, d: d };
+        renderCalendar();
+        $("toStep3").disabled = false;
+      });
+    });
+  }
+  renderCalendar();
+  $("toStep3").addEventListener("click", function () { if (state.date) goTo(2); });
+
+  // ============ STEP 3: activities ============
+  var actWrap = $("activities");
+  ACTIVITIES.forEach(function (a) {
+    var label = document.createElement("label");
+    label.className = "opt";
+    label.innerHTML =
+      '<input type="checkbox" value="' + a.key + '">' +
+      '<span class="emoji">' + a.emoji + '</span>' +
+      '<span>' + a.label + '</span>';
+    var input = label.querySelector("input");
+    input.addEventListener("change", function () {
+      label.classList.toggle("checked", input.checked);
+      if (input.checked) {
+        if (state.activities.indexOf(a.key) === -1) state.activities.push(a.key);
+      } else {
+        state.activities = state.activities.filter(function (k) { return k !== a.key; });
+        delete state.details[a.key];
+      }
+      $("toStep4").disabled = state.activities.length === 0;
+    });
+    actWrap.appendChild(label);
+  });
+  $("toStep4").addEventListener("click", function () { if (state.activities.length) goTo(3); });
+
+  // ============ STEP 4: details per chosen activity ============
+  function buildDetails() {
+    var wrap = $("detailGroups");
+    wrap.innerHTML = "";
+    // keep activity order consistent with the master list
+    ACTIVITIES.forEach(function (a) {
+      if (state.activities.indexOf(a.key) === -1) return;
+      if (!state.details[a.key]) state.details[a.key] = [];
+
+      var group = document.createElement("div");
+      group.className = "group";
+      var h = document.createElement("h3");
+      h.innerHTML = '<span>' + a.emoji + '</span> ' + a.q;
+      group.appendChild(h);
+
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      a.opts.forEach(function (opt) {
+        var chip = document.createElement("div");
+        chip.className = "chip";
+        chip.textContent = opt;
+        if (state.details[a.key].indexOf(opt) !== -1) chip.classList.add("checked");
+        chip.addEventListener("click", function () {
+          var arr = state.details[a.key];
+          var idx = arr.indexOf(opt);
+          if (idx === -1) { arr.push(opt); chip.classList.add("checked"); }
+          else { arr.splice(idx, 1); chip.classList.remove("checked"); }
+        });
+        chips.appendChild(chip);
+      });
+      group.appendChild(chips);
+      wrap.appendChild(group);
+    });
+  }
+  $("toFinish").addEventListener("click", function () { goTo(4); });
+
+  // ============ FINAL: summary ============
+  function formatDate() {
+    if (!state.date) return "-";
+    var wds = ["일", "월", "화", "수", "목", "금", "토"];
+    var dt = new Date(state.date.y, state.date.m, state.date.d);
+    return state.date.y + "년 " + (state.date.m + 1) + "월 " + state.date.d + "일 (" + wds[dt.getDay()] + ")";
+  }
+
+  function buildSummary() {
+    var s = $("summary");
+    var rows = "";
+    rows += '<div class="row"><span class="ico">📅</span><div><div class="lbl">데이트 날짜</div><div class="val">' + formatDate() + '</div></div></div>';
+
+    var actLines = [];
+    ACTIVITIES.forEach(function (a) {
+      if (state.activities.indexOf(a.key) === -1) return;
+      var picked = (state.details[a.key] || []);
+      var line = a.emoji + " " + a.label;
+      if (picked.length) line += " <span style='color:#9a7686'>— " + picked.join(", ") + "</span>";
+      actLines.push(line);
+    });
+    rows += '<div class="row"><span class="ico">💝</span><div><div class="lbl">하고 싶은 것</div><div class="val">' + actLines.join("<br>") + '</div></div></div>';
+    s.innerHTML = rows;
+  }
+
+  // copy to clipboard
+  $("btnShare").addEventListener("click", function () {
+    var lines = [];
+    lines.push("💕 우리 데이트 약속 💕");
+    lines.push("");
+    lines.push("📅 " + formatDate());
+    lines.push("");
+    lines.push("하고 싶은 것:");
+    ACTIVITIES.forEach(function (a) {
+      if (state.activities.indexOf(a.key) === -1) return;
+      var picked = (state.details[a.key] || []);
+      var line = "• " + a.emoji + " " + a.label;
+      if (picked.length) line += " (" + picked.join(", ") + ")";
+      lines.push(line);
+    });
+    lines.push("");
+    lines.push("우리 이렇게 데이트하자! 💑");
+    var text = lines.join("\n");
+
+    function done() {
+      $("shareHint").textContent = "복사 완료! 나한테 카톡이나 DM으로 보내줘 💌";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } else {
+      fallbackCopy(text); done();
+    }
+  });
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+})();
+</script>
+</body>
+</html>
